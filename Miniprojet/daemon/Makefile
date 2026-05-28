@@ -1,4 +1,4 @@
-EXEC=main
+EXEC=fand
 SRCS=$(wildcard *.c)
 
 
