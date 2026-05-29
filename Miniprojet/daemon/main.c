@@ -13,8 +13,6 @@
 
 #include "ssd1306.h"
 
-#define DEAMON 0
-
 // GPIO paths
 #define GPIO_EXPORT "/sys/class/gpio/export"
 #define GPIO_UNEXPORT "/sys/class/gpio/unexport"
@@ -52,18 +50,19 @@
 // Global flag for signal handler to indicate program should end
 static volatile int end_program = 0;
 
-// The signal handler is used only for testing when running the program directly
-#if !DEAMON
+// The signal handler used if program is stopped 
 void signal_handler(int signum) {
     switch (signum) {
         case SIGINT:
+            end_program = 1;
+            break;
+        case SIGTERM:
             end_program = 1;
             break;
         default:
             break;
     }
 }
-#endif
 
 enum fan_mode { AUTO = 0, MANUAL = 1 };
 enum fan_freq {
@@ -286,15 +285,14 @@ static void handle_ipc_command(int client_fd, enum fan_freq* freq,
 }
 
 int main() {
-#if !DEAMON
-    // Setup signal handler (not useful if only used as a systemd service, but
-    // good for testing)
+    // Setup signal handler if deamon stopped with killall
+    // It will correctly clean up the necessary
     static struct sigaction sa;
     sa.sa_handler = signal_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
-#endif
+    sigaction(SIGTERM, &sa, NULL);
 
     // IPC socket setup
     int ret;
